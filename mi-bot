@@ -3,6 +3,7 @@ import telebot
 import g4f
 import yt_dlp
 import os
+import time
 
 bot = telebot.TeleBot('8677537465:AAGSdakokVu_DPABUCUEsCfbPqtsZniKQVA')
 
@@ -16,7 +17,7 @@ idiomas = {
 @bot.message_handler(commands=['start', 'help'])
 def menu(message):
     lista = "\n".join([f"{k}. {v[1]} {v[0]}" for k, v in idiomas.items()])
-    bot.reply_to(message, f"¡Qué bolá! Soy JAHYRONBOT. Dime si eres hombre o mujer, elige tu idioma (1-10) o envíame un link de YouTube para bajarte la música en MP3.\n\n{lista}")
+    bot.reply_to(message, f"¡Qué bolá! Soy JAHYRONBOT. Dime si eres 'hombre' o 'mujer', elige tu idio>
 
 @bot.message_handler(func=lambda message: True)
 def responder(message):
@@ -24,40 +25,42 @@ def responder(message):
     texto = message.text.lower()
 
     if "youtube.com/" in texto or "youtu.be/" in texto:
-        bot.reply_to(message, "¡Dale, asere! Estoy bajando esa música, espera un momento...")
+        bot.send_chat_action(chat_id, 'upload_document')
+        bot.reply_to(message, "¡Dale, asere! Estoy procesando esa música, dame un segundito...")
         try:
             ydl_opts = {
                 'format': 'bestaudio/best',
-                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
+                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredq>
                 'outtmpl': 'musica.%(ext)s',
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([texto])
             bot.send_audio(chat_id, open('musica.mp3', 'rb'))
             os.remove('musica.mp3')
-        except:
-            bot.reply_to(message, "No pude bajar eso, mi hermano. Intenta con otro link.")
+        except Exception as e:
+            bot.reply_to(message, "Oye, tuve un problema bajando ese audio. Asegúrate de que el link >
         return
 
     if "hombre" in texto or "mujer" in texto:
         usuarios[chat_id] = {"genero": "hombre" if "hombre" in texto else "mujer"}
-        bot.reply_to(message, "¡Recibido! Ahora dime el número del idioma.")
+        bot.reply_to(message, f"¡Entendido! Ya te tengo guardado como {usuarios[chat_id]['genero']}. >
         return
 
     if texto in idiomas:
-        if chat_id not in usuarios: usuarios[chat_id] = {"genero": "amigo"}
+        if chat_id not in usuarios: usuarios[chat_id] = {"genero": "hombre"}
         usuarios[chat_id]["idioma"] = idiomas[texto][0]
         bot.reply_to(message, f"¡Listo! Configurado en {idiomas[texto][0]} {idiomas[texto][1]}.")
         return
 
-    data = usuarios.get(chat_id, {"genero": "amigo", "idioma": "Español"})
+    data = usuarios.get(chat_id, {"genero": "hombre", "idioma": "Español"})
     trato = "asere" if data["genero"] == "hombre" else "reina"
 
+    bot.send_chat_action(chat_id, 'typing')
     try:
-        instruccion = f"Eres JAHYRONBOT, creado por Jahyron Castelvi Cartalla. Habla en {data['idioma']}. Usa '{trato}' y mantén esencia cubana."
-        respuesta = g4f.ChatCompletion.create(model='openai', provider=g4f.Provider.PollinationsAI, messages=[{'role': 'system', 'content': instruccion}, {'role': 'user', 'content': message.text}])
+        instruccion = f"Eres JAHYRONBOT, creado por Jahyron Castelvi Cartalla. Habla en {data['idioma>
+        respuesta = g4f.ChatCompletion.create(model='openai', provider=g4f.Provider.PollinationsAI, m>
         bot.reply_to(message, respuesta)
     except:
-        bot.reply_to(message, f"Oye {trato}, me quedé en blanco.")
+        bot.reply_to(message, f"Oye {trato}, me quedé en blanco. ¿Me repites eso?")
 
 bot.infinity_polling()
