@@ -1,0 +1,63 @@
+
+import telebot
+import g4f
+import yt_dlp
+import os
+
+bot = telebot.TeleBot('8677537465:AAGSdakokVu_DPABUCUEsCfbPqtsZniKQVA')
+
+usuarios = {}
+idiomas = {
+    "1": ("Español", "🇪🇸"), "2": ("Inglés", "🇺🇸"), "3": ("Francés", "🇫🇷"),
+    "4": ("Italiano", "🇮🇹"), "5": ("Portugués", "🇵🇹"), "6": ("Alemán", "🇩🇪"),
+    "7": ("Ruso", "🇷🇺"), "8": ("Japonés", "🇯🇵"), "9": ("Chino", "🇨🇳"), "10": ("Árabe", "🇸🇦")
+}
+
+@bot.message_handler(commands=['start', 'help'])
+def menu(message):
+    lista = "\n".join([f"{k}. {v[1]} {v[0]}" for k, v in idiomas.items()])
+    bot.reply_to(message, f"¡Qué bolá! Soy JAHYRONBOT. Dime si eres hombre o mujer, elige tu idioma (1-10) o envíame un link de YouTube para bajarte la música en MP3.\n\n{lista}")
+
+@bot.message_handler(func=lambda message: True)
+def responder(message):
+    chat_id = message.chat.id
+    texto = message.text.lower()
+
+    if "youtube.com/" in texto or "youtu.be/" in texto:
+        bot.reply_to(message, "¡Dale, asere! Estoy bajando esa música, espera un momento...")
+        try:
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
+                'outtmpl': 'musica.%(ext)s',
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([texto])
+            bot.send_audio(chat_id, open('musica.mp3', 'rb'))
+            os.remove('musica.mp3')
+        except:
+            bot.reply_to(message, "No pude bajar eso, mi hermano. Intenta con otro link.")
+        return
+
+    if "hombre" in texto or "mujer" in texto:
+        usuarios[chat_id] = {"genero": "hombre" if "hombre" in texto else "mujer"}
+        bot.reply_to(message, "¡Recibido! Ahora dime el número del idioma.")
+        return
+
+    if texto in idiomas:
+        if chat_id not in usuarios: usuarios[chat_id] = {"genero": "amigo"}
+        usuarios[chat_id]["idioma"] = idiomas[texto][0]
+        bot.reply_to(message, f"¡Listo! Configurado en {idiomas[texto][0]} {idiomas[texto][1]}.")
+        return
+
+    data = usuarios.get(chat_id, {"genero": "amigo", "idioma": "Español"})
+    trato = "asere" if data["genero"] == "hombre" else "reina"
+
+    try:
+        instruccion = f"Eres JAHYRONBOT, creado por Jahyron Castelvi Cartalla. Habla en {data['idioma']}. Usa '{trato}' y mantén esencia cubana."
+        respuesta = g4f.ChatCompletion.create(model='openai', provider=g4f.Provider.PollinationsAI, messages=[{'role': 'system', 'content': instruccion}, {'role': 'user', 'content': message.text}])
+        bot.reply_to(message, respuesta)
+    except:
+        bot.reply_to(message, f"Oye {trato}, me quedé en blanco.")
+
+bot.infinity_polling()
